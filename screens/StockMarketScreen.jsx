@@ -10,7 +10,6 @@ import {
   RefreshControl,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
 
 const StockMarketScreen = ({ navigation, route }) => {
   const { isDarkMode } = route.params;

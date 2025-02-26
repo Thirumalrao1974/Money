@@ -1125,6 +1125,46 @@ const baseStyles = StyleSheet.create({
   darkModeText: {
     color: '#e5e7eb',
   },
+  visualizationCard: {
+    backgroundColor: 'white',
+    borderRadius: 15,
+    padding: 15,
+    marginVertical: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  distributionBar: {
+    flexDirection: 'row',
+    height: 40,
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: '#f3f4f6',
+    marginTop: 10,
+  },
+  barSection: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  barText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  noDataText: {
+    flex: 1,
+    textAlign: 'center',
+    color: '#6b7280',
+    paddingVertical: 10,
+  },
+  visualizationTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 5,
+  },
 });
 
 const HomeScreen = () => {
@@ -1172,6 +1212,7 @@ const HomeScreen = () => {
   // Add new state variables
   const [freezesLeft, setFreezesLeft] = useState(5);
   const [lastTransactionDate, setLastTransactionDate] = useState(null);
+  const [streakDates, setStreakDates] = useState([]);
 
   // Currency symbols mapping
   const currencySymbols = {
@@ -1514,6 +1555,42 @@ const HomeScreen = () => {
     checkStreakStatus();
   }, []);
 
+  // Function to calculate streak based on transaction dates
+  const calculateStreak = (dates) => {
+    if (!dates.length) return 0;
+    
+    const today = new Date().setHours(0, 0, 0, 0);
+    const sortedDates = [...dates].sort((a, b) => b - a); // Sort in descending order
+    let streak = 1;
+    let lastDate = new Date(sortedDates[0]).setHours(0, 0, 0, 0);
+    
+    // If no transaction today, check if we should use a freeze
+    if (lastDate < today) {
+      if (freezesLeft > 0) {
+        const newFreezes = freezesLeft - 1;
+        setFreezesLeft(newFreezes);
+        AsyncStorage.setItem('freezesLeft', String(newFreezes));
+      } else {
+        return 0; // Reset streak if no freezes left
+      }
+    }
+    
+    // Calculate consecutive days
+    for (let i = 1; i < sortedDates.length; i++) {
+      const currentDate = new Date(sortedDates[i]).setHours(0, 0, 0, 0);
+      const diffDays = (lastDate - currentDate) / (1000 * 60 * 60 * 24);
+      
+      if (diffDays === 1) {
+        streak++;
+        lastDate = currentDate;
+      } else {
+        break;
+      }
+    }
+    
+    return streak;
+  };
+
   // Update handleAddTransaction function
   const handleAddTransaction = async () => {
     try {
@@ -1539,37 +1616,42 @@ const HomeScreen = () => {
         currency: selectedCurrency
       };
 
-      // Update transactions and calculate new totals
       const updatedTransactions = [newTransaction, ...transactions];
       
+      // Update transaction dates for streak calculation
+      const newDate = new Date(newTransaction.date).setHours(0, 0, 0, 0);
+      const updatedDates = [...streakDates, newDate];
+      setStreakDates(updatedDates);
+      
+      // Calculate new streak
+      const newStreak = calculateStreak(updatedDates);
+      setStreak(newStreak);
+
       // Recalculate totals from all transactions
       const newTotals = updatedTransactions.reduce((acc, t) => {
-        if (t.type === 'income') acc.income += t.amount;
-        if (t.type === 'expense') acc.expenses += t.amount;
-        if (t.type === 'savings') acc.savings += t.amount;
+        const amount = parseFloat(t.amount);
+        if (t.type === 'income') acc.income += amount;
+        if (t.type === 'expense') acc.expenses += amount;
+        if (t.type === 'savings') acc.savings += amount;
         return acc;
       }, { income: 0, expenses: 0, savings: 0 });
 
-      // Update state with new totals
+      // Update state
+      setTransactions(updatedTransactions);
       setIncome(newTotals.income);
       setExpenses(newTotals.expenses);
       setSavings(newTotals.savings);
-      setTransactions(updatedTransactions);
+      setLastTransactionDate(new Date());
 
-      // Update streak
-      const now = new Date();
-      setLastTransactionDate(now);
-      const newStreak = streak + 1;
-      setStreak(newStreak);
-
-      // Save everything to AsyncStorage
+      // Save to AsyncStorage
       await AsyncStorage.multiSet([
         ['transactions', JSON.stringify(updatedTransactions)],
         ['income', String(newTotals.income)],
         ['expenses', String(newTotals.expenses)],
         ['savings', String(newTotals.savings)],
-        ['lastTransactionDate', now.toISOString()],
-        ['streak', String(newStreak)]
+        ['streak', String(newStreak)],
+        ['streakDates', JSON.stringify(updatedDates)],
+        ['lastTransactionDate', new Date().toISOString()]
       ]);
 
       // Check for achievements
@@ -1583,7 +1665,7 @@ const HomeScreen = () => {
       if (newStreak === 7) await awardAchievement(ACHIEVEMENTS.STREAKS[2]);
       if (newStreak === 30) await awardAchievement(ACHIEVEMENTS.STREAKS[3]);
 
-      // Reset form and show success
+      // Reset form
       setTransactionAmount('');
       setSelectedMainCategory('');
       setSelectedSubCategory('');
@@ -2571,6 +2653,50 @@ const HomeScreen = () => {
     </Animatable.View>
   );
 
+  // Update visualization component
+  const renderVisualization = () => {
+    const total = income + expenses + savings;
+    
+    return (
+      <View style={[styles.visualizationCard, isDarkMode && styles.darkModeCard]}>
+        <Text style={[styles.visualizationTitle, isDarkMode && styles.darkModeText]}>
+          Financial Distribution
+        </Text>
+        <View style={styles.distributionBar}>
+          {total > 0 ? (
+            <>
+              <View style={[styles.barSection, { 
+                flex: income / total,
+                backgroundColor: '#00e676',
+                minWidth: income > 0 ? '10%' : 0
+              }]}>
+                <Text style={styles.barText}>{Math.round((income / total) * 100)}%</Text>
+              </View>
+              <View style={[styles.barSection, {
+                flex: expenses / total,
+                backgroundColor: '#ff1744',
+                minWidth: expenses > 0 ? '10%' : 0
+              }]}>
+                <Text style={styles.barText}>{Math.round((expenses / total) * 100)}%</Text>
+              </View>
+              <View style={[styles.barSection, {
+                flex: savings / total,
+                backgroundColor: '#2962ff',
+                minWidth: savings > 0 ? '10%' : 0
+              }]}>
+                <Text style={styles.barText}>{Math.round((savings / total) * 100)}%</Text>
+              </View>
+            </>
+          ) : (
+            <Text style={[styles.noDataText, isDarkMode && styles.darkModeText]}>
+              No transactions yet
+            </Text>
+          )}
+        </View>
+      </View>
+    );
+  };
+
   return (
     <ScrollView style={styles.container}>
       <LinearGradient
@@ -2615,16 +2741,7 @@ const HomeScreen = () => {
                     style={styles.iconButton}
                     onPress={() => {
                       try {
-                        navigation.navigate('StockMarket', { 
-                          isDarkMode,
-                          onStockSelect: (stock) => {
-                            navigation.navigate('StockDetails', {
-                              stock,
-                              isDarkMode,
-                              API_KEY: 'cuv906pr01qpi6ru1kfgcuv906pr01qpi6ru1kg0'
-                            });
-                          }
-                        });
+                        navigation.navigate('StockMarket', { isDarkMode });
                       } catch (error) {
                         console.error('Navigation error:', error);
                         Alert.alert('Error', 'Unable to open stock market. Please try again.');

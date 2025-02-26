@@ -6,6 +6,8 @@ import HomeScreen from "./screens/HomeScreen";
 import StockMarketScreen from './screens/StockMarketScreen';
 import StockDetailsScreen from './screens/StockDetailsScreen';
 import AchievementsScreen from './screens/AchievementsScreen';
+import { TouchableOpacity } from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const Stack = createNativeStackNavigator();
 
@@ -40,7 +42,18 @@ const App = () => {
               },
               headerTintColor: '#fff',
               headerShown: true,
-              animation: 'slide_from_right'
+              headerLeft: (props) => (
+                <TouchableOpacity
+                  onPress={() => props.navigation.goBack()}
+                  style={{ marginLeft: 10 }}
+                >
+                  <MaterialCommunityIcons 
+                    name="arrow-left" 
+                    size={24} 
+                    color="#fff" 
+                  />
+                </TouchableOpacity>
+              ),
             }}
           />
           <Stack.Screen 
@@ -53,7 +66,18 @@ const App = () => {
               },
               headerTintColor: '#fff',
               headerShown: true,
-              animation: 'slide_from_right'
+              headerLeft: (props) => (
+                <TouchableOpacity
+                  onPress={() => props.navigation.goBack()}
+                  style={{ marginLeft: 10 }}
+                >
+                  <MaterialCommunityIcons 
+                    name="arrow-left" 
+                    size={24} 
+                    color="#fff" 
+                  />
+                </TouchableOpacity>
+              ),
             }}
           />
         </Stack.Navigator>
