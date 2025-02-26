@@ -19,33 +19,38 @@ import LottieView from 'lottie-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ACHIEVEMENTS } from '../constants/Achievements';
 
-// At the very top of your file, before the HomeScreen component
-const baseStyles = StyleSheet.create({
+// Define styles at the top level, outside of the component
+const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
   gradient: {
     flex: 1,
-    minHeight: '100%',
+    padding: 20,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  iconButton: {
+    padding: 10,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   mainContainer: {
     flex: 1,
     padding: 15,
   },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    marginBottom: 20,
-  },
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  headerButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 15,
   },
   welcomeText: {
     fontSize: 20,
@@ -1173,7 +1178,6 @@ const baseStyles = StyleSheet.create({
 });
 
 const HomeScreen = () => {
-  // Add missing state variables
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [name, setName] = useState('');
   const [isDarkMode, setIsDarkMode] = useState(false);
