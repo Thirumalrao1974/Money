@@ -12,9 +12,8 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
-const StockMarketScreen = ({ route }) => {
-  const { isDarkMode } = route.params;
-  const navigation = useNavigation();
+const StockMarketScreen = ({ route, navigation }) => {
+  const { isDarkMode, onStockSelect } = route.params;
   const [stocks, setStocks] = useState([]);
   const [loading, setLoading] = useState(true);
   const API_KEY = 'cuv906pr01qpi6ru1kfgcuv906pr01qpi6ru1kg0';
@@ -73,11 +72,15 @@ const StockMarketScreen = ({ route }) => {
   };
 
   const handleStockPress = (stock) => {
-    navigation.navigate('StockDetails', {
-      stock,
-      isDarkMode,
-      API_KEY
-    });
+    if (onStockSelect) {
+      onStockSelect(stock);
+    } else {
+      navigation.navigate('StockDetails', {
+        stock,
+        isDarkMode,
+        API_KEY
+      });
+    }
   };
 
   const renderStockSection = (title, filtered) => (

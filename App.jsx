@@ -39,12 +39,20 @@ const App = () => {
                 backgroundColor: '#6366f1',
               },
               headerTintColor: '#fff',
+              headerShown: true
             }}
           />
           <Stack.Screen 
             name="StockDetails" 
             component={StockDetailsScreen}
-            options={{ title: 'Stock Details' }}
+            options={{ 
+              title: 'Stock Details',
+              headerStyle: {
+                backgroundColor: '#6366f1',
+              },
+              headerTintColor: '#fff',
+              headerShown: true
+            }}
           />
         </Stack.Navigator>
       </NavigationContainer>

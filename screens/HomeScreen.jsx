@@ -17,6 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import * as Animatable from 'react-native-animatable';
 import LottieView from 'lottie-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ACHIEVEMENTS } from '../constants/Achievements';
 
 // At the very top of your file, before the HomeScreen component
 const baseStyles = StyleSheet.create({
@@ -1086,6 +1087,27 @@ const baseStyles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 8,
   },
+  streakContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  streakText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1f2937',
+  },
 });
 
 const HomeScreen = () => {
@@ -1129,6 +1151,7 @@ const HomeScreen = () => {
   const [editingTransactionId, setEditingTransactionId] = useState(null);
   const [showAchievement, setShowAchievement] = useState(false);
   const [currentAchievement, setCurrentAchievement] = useState(null);
+  const [showStreakWarning, setShowStreakWarning] = useState(false);
   
   // Currency symbols mapping
   const currencySymbols = {
@@ -1233,48 +1256,6 @@ const HomeScreen = () => {
     })}`;
   };
 
-  // Define achievement categories
-  const ACHIEVEMENTS = {
-    FIRST_TIME: [
-      {
-        id: 'first_transaction',
-        title: 'First Step!',
-        description: 'Made your first transaction',
-        points: 100,
-        icon: '🎉',
-        animation: 'https://lottie.host/2c692d4b-c0b1-4ee4-b696-486eee4e7a50/JGfQKthvE1.json'
-      },
-      {
-        id: 'first_savings',
-        title: 'Savings Pioneer',
-        description: 'Started your savings journey',
-        points: 150,
-        icon: '🏦',
-        animation: 'https://lottie.host/7f726503-4f6c-4a51-9af0-c44f24a0b6b9/7Zn6UGsWE4.json'
-      }
-    ],
-    MILESTONES: [
-      {
-        id: 'transactions_10',
-        title: 'Transaction Master',
-        description: 'Completed 10 transactions',
-        points: 200,
-        icon: '🎯',
-        animation: 'https://lottie.host/b5c42947-9c6f-44c7-b89c-91544e6eb281/UHc9rjPLkA.json'
-      }
-    ],
-    STREAKS: [
-      {
-        id: 'streak_7',
-        title: 'Week Warrior',
-        description: '7-day tracking streak',
-        points: 300,
-        icon: '🔥',
-        animation: 'https://lottie.host/c3d1f01b-3f69-4721-ae76-8eab32fb5c6c/2eQYxFsHOx.json'
-      }
-    ]
-  };
-
   // Add this function to check and award achievements
   const checkAchievements = async (transaction) => {
     // Check first transaction
@@ -1304,45 +1285,34 @@ const HomeScreen = () => {
   // Function to award achievements
   const awardAchievement = async (achievement) => {
     try {
+      // Check if achievement already exists
+      if (achievements.some(a => a.id === achievement.id)) {
+        return; // Skip if already awarded
+      }
+
+      // Update local state first
+      setAchievements(prev => [...prev, achievement]);
+      setPoints(prev => prev + achievement.points);
+      
       // Show achievement animation
       setCurrentAchievement(achievement);
       setShowAchievement(true);
 
-      // Update local state first
-      setAchievements(prevAchievements => {
-        // Check if achievement already exists
-        if (!prevAchievements.some(a => a.id === achievement.id)) {
-          return [...prevAchievements, achievement];
-        }
-        return prevAchievements;
-      });
-      
-      // Update points
-      setPoints(prev => prev + achievement.points);
-      
       // Save to AsyncStorage
-      const existingAchievements = await AsyncStorage.getItem('achievements');
-      let updatedAchievements = [];
-      
-      if (existingAchievements) {
-        updatedAchievements = JSON.parse(existingAchievements);
-        // Only add if not already present
-        if (!updatedAchievements.some(a => a.id === achievement.id)) {
-          updatedAchievements.push(achievement);
-        }
-      } else {
-        updatedAchievements = [achievement];
-      }
+      const updatedAchievements = [...achievements, achievement];
+      const updatedPoints = points + achievement.points;
 
       await AsyncStorage.multiSet([
         ['achievements', JSON.stringify(updatedAchievements)],
-        ['points', String(points + achievement.points)]
+        ['points', String(updatedPoints)]
       ]);
 
-      // Hide achievement after duration
+      // Hide achievement after animation
       setTimeout(() => {
         setShowAchievement(false);
-      }, 16000);
+      }, 3000);
+
+      // Play success sound or vibration here if desired
     } catch (error) {
       console.error('Error awarding achievement:', error);
     }
@@ -1512,14 +1482,8 @@ const HomeScreen = () => {
       const updatedTransactions = [newTransaction, ...transactions];
       setTransactions(updatedTransactions);
 
-      // Update totals based on transaction type
-      if (transactionType === 'income') {
-        setIncome(prev => prev + amount);
-      } else if (transactionType === 'expense') {
-        setExpenses(prev => prev + amount);
-      } else if (transactionType === 'savings') {
-        setSavings(prev => prev + amount);
-      }
+      // Check all possible achievements after each transaction
+      await checkAllAchievements(updatedTransactions, newTransaction);
 
       // Save transaction data
       await AsyncStorage.multiSet([
@@ -1529,35 +1493,74 @@ const HomeScreen = () => {
         ['savings', String(transactionType === 'savings' ? savings + amount : savings)]
       ]);
 
-      // Check for achievements
-      if (updatedTransactions.length === 1) {
-        // First transaction achievement
-        await awardAchievement(ACHIEVEMENTS.FIRST_TIME[0]);
-      }
-
-      if (updatedTransactions.length === 10) {
-        // 10 transactions achievement
-        await awardAchievement(ACHIEVEMENTS.MILESTONES[0]);
-      }
-
-      if (transactionType === 'savings' && !achievements.some(a => a.id === 'first_savings')) {
-        // First savings achievement
-        await awardAchievement(ACHIEVEMENTS.FIRST_TIME[1]);
-      }
-
-      // Reset form and close modal
+      // Reset form and show success
       setTransactionAmount('');
       setSelectedMainCategory('');
       setSelectedSubCategory('');
       setShowAddTransaction(false);
       setTransactionType('expense');
 
-      // Show success message
       Alert.alert('Success', 'Transaction added successfully!');
-
     } catch (error) {
-      console.error('Error adding transaction:', error);
+      console.error('Error:', error);
       Alert.alert('Error', 'Failed to add transaction');
+    }
+  };
+
+  // Add new comprehensive achievement checking function
+  const checkAllAchievements = async (transactions, newTransaction) => {
+    try {
+      // First Transaction Achievement
+      if (transactions.length === 1) {
+        await awardAchievement(ACHIEVEMENTS.FIRST_TIME[0]);
+      }
+
+      // First transaction of each type
+      const typeCount = transactions.filter(t => t.type === newTransaction.type).length;
+      if (typeCount === 1) {
+        if (newTransaction.type === 'savings') {
+          await awardAchievement(ACHIEVEMENTS.FIRST_TIME[1]); // First savings
+        }
+      }
+
+      // Transaction Milestones
+      if (transactions.length === 10) {
+        await awardAchievement(ACHIEVEMENTS.MILESTONES[0]);
+      }
+
+      // Savings Milestones
+      const totalSavings = transactions
+        .filter(t => t.type === 'savings')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      if (totalSavings >= 1000 && !achievements.some(a => a.id === 'savings_1000')) {
+        await awardAchievement(ACHIEVEMENTS.SAVINGS[2]);
+      } else if (totalSavings >= 500 && !achievements.some(a => a.id === 'savings_500')) {
+        await awardAchievement(ACHIEVEMENTS.SAVINGS[1]);
+      } else if (totalSavings >= 100 && !achievements.some(a => a.id === 'savings_100')) {
+        await awardAchievement(ACHIEVEMENTS.SAVINGS[0]);
+      }
+
+      // Budget Control Achievement
+      const thisMonth = new Date().getMonth();
+      const thisMonthsExpenses = transactions
+        .filter(t => t.type === 'expense' && new Date(t.date).getMonth() === thisMonth)
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      if (thisMonthsExpenses <= income * 0.7 && !achievements.some(a => a.id === 'budget_master')) {
+        await awardAchievement(ACHIEVEMENTS.EXPENSE_CONTROL[0]);
+      }
+
+      // Investment Achievements
+      const successfulInvestments = transactions.filter(t => 
+        t.type === 'investment' && t.amount > 0
+      ).length;
+
+      if (successfulInvestments >= 3 && !achievements.some(a => a.id === 'smart_investor')) {
+        await awardAchievement(ACHIEVEMENTS.INVESTMENTS[0]);
+      }
+    } catch (error) {
+      console.error('Error checking achievements:', error);
     }
   };
 
@@ -2350,23 +2353,49 @@ const HomeScreen = () => {
 
   // Add this useEffect to load achievements on component mount
   useEffect(() => {
-    const loadAchievements = async () => {
+    const loadUserData = async () => {
       try {
-        const savedAchievements = await AsyncStorage.getItem('achievements');
-        const savedPoints = await AsyncStorage.getItem('points');
-        
-        if (savedAchievements) {
-          setAchievements(JSON.parse(savedAchievements));
+        const [
+          savedAchievements,
+          savedPoints,
+          savedTransactions,
+          savedStreak
+        ] = await AsyncStorage.multiGet([
+          'achievements',
+          'points',
+          'transactions',
+          'streak'
+        ]);
+
+        if (savedAchievements[1]) {
+          setAchievements(JSON.parse(savedAchievements[1]));
         }
-        if (savedPoints) {
-          setPoints(parseInt(savedPoints));
+        if (savedPoints[1]) {
+          setPoints(parseInt(savedPoints[1]));
+        }
+        if (savedTransactions[1]) {
+          const transactions = JSON.parse(savedTransactions[1]);
+          setTransactions(transactions);
+          
+          // Update totals
+          const totals = transactions.reduce((acc, t) => {
+            acc[t.type] += t.amount;
+            return acc;
+          }, { income: 0, expenses: 0, savings: 0 });
+          
+          setIncome(totals.income);
+          setExpenses(totals.expenses);
+          setSavings(totals.savings);
+        }
+        if (savedStreak[1]) {
+          setStreak(parseInt(savedStreak[1]));
         }
       } catch (error) {
-        console.error('Error loading achievements:', error);
+        console.error('Error loading user data:', error);
       }
     };
 
-    loadAchievements();
+    loadUserData();
   }, []);
 
   // Add this useEffect to persist dark mode setting
@@ -2392,12 +2421,71 @@ const HomeScreen = () => {
     }
   };
 
+  // Add this useEffect for streak tracking
+  useEffect(() => {
+    const checkStreak = async () => {
+      try {
+        const savedLastLogin = await AsyncStorage.getItem('lastLoginDate');
+        const today = new Date().toDateString();
+        
+        if (savedLastLogin) {
+          const lastLogin = new Date(savedLastLogin);
+          const diffDays = Math.floor((new Date() - lastLogin) / (1000 * 60 * 60 * 24));
+          
+          if (diffDays === 1) {
+            // Increment streak
+            const newStreak = streak + 1;
+            setStreak(newStreak);
+            await AsyncStorage.setItem('streak', String(newStreak));
+            
+            // Check for streak achievements
+            if (newStreak === 3) await awardAchievement(ACHIEVEMENTS.STREAKS[1]);
+            if (newStreak === 7) await awardAchievement(ACHIEVEMENTS.STREAKS[2]);
+            if (newStreak === 30) await awardAchievement(ACHIEVEMENTS.STREAKS[3]);
+          } else if (diffDays > 1) {
+            // Reset streak
+            setStreak(1);
+            await AsyncStorage.setItem('streak', '1');
+            await awardAchievement(ACHIEVEMENTS.STREAKS[0]); // Day 1 achievement
+          }
+        } else {
+          // First time user
+          setStreak(1);
+          await AsyncStorage.setItem('streak', '1');
+          await awardAchievement(ACHIEVEMENTS.STREAKS[0]); // Day 1 achievement
+        }
+        
+        await AsyncStorage.setItem('lastLoginDate', today);
+      } catch (error) {
+        console.error('Error checking streak:', error);
+      }
+    };
+    
+    checkStreak();
+  }, []);
+
+  // Add streak display component
+  const StreakDisplay = () => (
+    <Animatable.View 
+      animation="bounceIn" 
+      style={[
+        styles.streakContainer,
+        isDarkMode && styles.darkModeCard
+      ]}
+    >
+      <Text style={[styles.streakText, isDarkMode && styles.darkModeText]}>
+        🔥 Streak: {streak} {streak === 1 ? 'Day' : 'Days'}
+      </Text>
+    </Animatable.View>
+  );
+
   return (
     <ScrollView style={styles.container}>
       <LinearGradient
         colors={isDarkMode ? ['#1f2937', '#111827'] : ['#ffffff', '#f3f4f6']}
         style={styles.gradient}
       >
+        <StreakDisplay />
         {currentStep < 4 ? (
           renderOnboarding()
         ) : (
@@ -2433,7 +2521,16 @@ const HomeScreen = () => {
                   </TouchableOpacity>
                   <TouchableOpacity 
                     style={styles.iconButton}
-                    onPress={() => navigation.navigate('StockMarket', { isDarkMode })}
+                    onPress={() => navigation.navigate('StockMarket', { 
+                      isDarkMode,
+                      onStockSelect: (stock) => {
+                        navigation.navigate('StockDetails', {
+                          stock,
+                          isDarkMode,
+                          API_KEY: 'cuv906pr01qpi6ru1kfgcuv906pr01qpi6ru1kg0'
+                        });
+                      }
+                    })}
                   >
                     <MaterialCommunityIcons 
                       name="chart-line" 
