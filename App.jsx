@@ -7,7 +7,7 @@ import StockMarketScreen from './screens/StockMarketScreen';
 import StockDetailsScreen from './screens/StockDetailsScreen';
 import AchievementsScreen from './screens/AchievementsScreen';
 import { TouchableOpacity } from 'react-native';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const Stack = createNativeStackNavigator();
 
@@ -35,16 +35,16 @@ const App = () => {
           <Stack.Screen 
             name="StockMarket" 
             component={StockMarketScreen}
-            options={{ 
+            options={({ navigation }) => ({ 
               title: 'Stock Market',
               headerStyle: {
                 backgroundColor: '#6366f1',
               },
               headerTintColor: '#fff',
               headerShown: true,
-              headerLeft: (props) => (
+              headerLeft: () => (
                 <TouchableOpacity
-                  onPress={() => props.navigation.goBack()}
+                  onPress={() => navigation.goBack()}
                   style={{ marginLeft: 10 }}
                 >
                   <MaterialCommunityIcons 
@@ -54,21 +54,21 @@ const App = () => {
                   />
                 </TouchableOpacity>
               ),
-            }}
+            })}
           />
           <Stack.Screen 
             name="StockDetails" 
             component={StockDetailsScreen}
-            options={{ 
+            options={({ navigation }) => ({ 
               title: 'Stock Details',
               headerStyle: {
                 backgroundColor: '#6366f1',
               },
               headerTintColor: '#fff',
               headerShown: true,
-              headerLeft: (props) => (
+              headerLeft: () => (
                 <TouchableOpacity
-                  onPress={() => props.navigation.goBack()}
+                  onPress={() => navigation.goBack()}
                   style={{ marginLeft: 10 }}
                 >
                   <MaterialCommunityIcons 
@@ -78,7 +78,7 @@ const App = () => {
                   />
                 </TouchableOpacity>
               ),
-            }}
+            })}
           />
         </Stack.Navigator>
       </NavigationContainer>
