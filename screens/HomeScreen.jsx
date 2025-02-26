@@ -1108,6 +1108,23 @@ const baseStyles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1f2937',
   },
+  streakInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+  },
+  freezeText: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginLeft: 10,
+  },
+  darkModeCard: {
+    backgroundColor: '#374151',
+  },
+  darkModeText: {
+    color: '#e5e7eb',
+  },
 });
 
 const HomeScreen = () => {
@@ -1152,7 +1169,10 @@ const HomeScreen = () => {
   const [showAchievement, setShowAchievement] = useState(false);
   const [currentAchievement, setCurrentAchievement] = useState(null);
   const [showStreakWarning, setShowStreakWarning] = useState(false);
-  
+  // Add new state variables
+  const [freezesLeft, setFreezesLeft] = useState(5);
+  const [lastTransactionDate, setLastTransactionDate] = useState(null);
+
   // Currency symbols mapping
   const currencySymbols = {
     USD: '$',
@@ -1453,11 +1473,53 @@ const HomeScreen = () => {
     }
   };
 
-  // Update the handleAddTransaction function
+  // Add function to check streak status
+  const checkStreakStatus = async () => {
+    try {
+      const savedLastTransaction = await AsyncStorage.getItem('lastTransactionDate');
+      const savedFreezes = await AsyncStorage.getItem('freezesLeft');
+      
+      if (savedFreezes) {
+        setFreezesLeft(parseInt(savedFreezes));
+      }
+      
+      if (savedLastTransaction) {
+        const lastDate = new Date(savedLastTransaction);
+        const now = new Date();
+        const diffHours = Math.abs(now - lastDate) / 36e5; // Convert to hours
+        
+        if (diffHours > 24) {
+          // More than 24 hours have passed
+          if (freezesLeft > 0) {
+            // Use a freeze
+            const newFreezes = freezesLeft - 1;
+            setFreezesLeft(newFreezes);
+            await AsyncStorage.setItem('freezesLeft', String(newFreezes));
+            Alert.alert('Freeze Used', `Used 1 freeze to maintain streak. ${newFreezes} freezes remaining.`);
+          } else {
+            // Reset streak
+            setStreak(0);
+            await AsyncStorage.setItem('streak', '0');
+            Alert.alert('Streak Lost', 'You missed a day and have no freezes left. Streak reset to 0.');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error checking streak status:', error);
+    }
+  };
+
+  // Update useEffect to check streak status on app open
+  useEffect(() => {
+    checkStreakStatus();
+  }, []);
+
+  // Update handleAddTransaction function
   const handleAddTransaction = async () => {
     try {
+      // Validate transaction
       if (!transactionAmount || !selectedMainCategory) {
-        Alert.alert('Error', 'Please enter amount and select a category');
+        Alert.alert('Error', 'Please fill in all required fields');
         return;
       }
 
@@ -1467,7 +1529,6 @@ const HomeScreen = () => {
         return;
       }
 
-      // Create new transaction object
       const newTransaction = {
         id: Date.now().toString(),
         amount: amount,
@@ -1478,20 +1539,49 @@ const HomeScreen = () => {
         currency: selectedCurrency
       };
 
-      // Update transactions state
+      // Update transactions and calculate new totals
       const updatedTransactions = [newTransaction, ...transactions];
+      
+      // Recalculate totals from all transactions
+      const newTotals = updatedTransactions.reduce((acc, t) => {
+        if (t.type === 'income') acc.income += t.amount;
+        if (t.type === 'expense') acc.expenses += t.amount;
+        if (t.type === 'savings') acc.savings += t.amount;
+        return acc;
+      }, { income: 0, expenses: 0, savings: 0 });
+
+      // Update state with new totals
+      setIncome(newTotals.income);
+      setExpenses(newTotals.expenses);
+      setSavings(newTotals.savings);
       setTransactions(updatedTransactions);
 
-      // Check all possible achievements after each transaction
-      await checkAllAchievements(updatedTransactions, newTransaction);
+      // Update streak
+      const now = new Date();
+      setLastTransactionDate(now);
+      const newStreak = streak + 1;
+      setStreak(newStreak);
 
-      // Save transaction data
+      // Save everything to AsyncStorage
       await AsyncStorage.multiSet([
         ['transactions', JSON.stringify(updatedTransactions)],
-        ['income', String(transactionType === 'income' ? income + amount : income)],
-        ['expenses', String(transactionType === 'expense' ? expenses + amount : expenses)],
-        ['savings', String(transactionType === 'savings' ? savings + amount : savings)]
+        ['income', String(newTotals.income)],
+        ['expenses', String(newTotals.expenses)],
+        ['savings', String(newTotals.savings)],
+        ['lastTransactionDate', now.toISOString()],
+        ['streak', String(newStreak)]
       ]);
+
+      // Check for achievements
+      if (updatedTransactions.length === 1) {
+        await awardAchievement(ACHIEVEMENTS.FIRST_TIME[0]);
+        await awardAchievement(ACHIEVEMENTS.STREAKS[0]);
+      }
+
+      // Check for streak achievements
+      if (newStreak === 3) await awardAchievement(ACHIEVEMENTS.STREAKS[1]);
+      if (newStreak === 7) await awardAchievement(ACHIEVEMENTS.STREAKS[2]);
+      if (newStreak === 30) await awardAchievement(ACHIEVEMENTS.STREAKS[3]);
 
       // Reset form and show success
       setTransactionAmount('');
@@ -1502,7 +1592,7 @@ const HomeScreen = () => {
 
       Alert.alert('Success', 'Transaction added successfully!');
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error adding transaction:', error);
       Alert.alert('Error', 'Failed to add transaction');
     }
   };
@@ -2464,18 +2554,20 @@ const HomeScreen = () => {
     checkStreak();
   }, []);
 
-  // Add streak display component
+  // Update StreakDisplay component
   const StreakDisplay = () => (
     <Animatable.View 
       animation="bounceIn" 
-      style={[
-        styles.streakContainer,
-        isDarkMode && styles.darkModeCard
-      ]}
+      style={[styles.streakContainer, isDarkMode && styles.darkModeCard]}
     >
-      <Text style={[styles.streakText, isDarkMode && styles.darkModeText]}>
-        🔥 Streak: {streak} {streak === 1 ? 'Day' : 'Days'}
-      </Text>
+      <View style={styles.streakInfo}>
+        <Text style={[styles.streakText, isDarkMode && styles.darkModeText]}>
+          🔥 Streak: {streak} {streak === 1 ? 'Day' : 'Days'}
+        </Text>
+        <Text style={[styles.freezeText, isDarkMode && styles.darkModeText]}>
+          ❄️ Freezes: {freezesLeft}
+        </Text>
+      </View>
     </Animatable.View>
   );
 

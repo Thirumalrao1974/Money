@@ -12,8 +12,8 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
-const StockMarketScreen = ({ route, navigation }) => {
-  const { isDarkMode, onStockSelect } = route.params;
+const StockMarketScreen = ({ navigation, route }) => {
+  const { isDarkMode } = route.params;
   const [stocks, setStocks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -54,7 +54,7 @@ const StockMarketScreen = ({ route, navigation }) => {
           change: ((data.c - data.pc) / data.pc * 100).toFixed(2),
           high: data.h,
           low: data.l,
-          invested: Math.random() < 0.5 // Random for demo purposes
+          invested: false
         };
       });
 
@@ -118,15 +118,11 @@ const StockMarketScreen = ({ route, navigation }) => {
   };
 
   const handleStockPress = (stock) => {
-    if (onStockSelect) {
-      onStockSelect(stock);
-    } else {
-      navigation.navigate('StockDetails', {
-        stock,
-        isDarkMode,
-        API_KEY
-      });
-    }
+    navigation.navigate('StockDetails', {
+      stock,
+      isDarkMode,
+      API_KEY
+    });
   };
 
   const renderStockSection = (title, filtered) => (
@@ -215,8 +211,7 @@ const StockMarketScreen = ({ route, navigation }) => {
         />
       }
     >
-      {renderStockSection('Your Investments', stocks.filter(s => s.invested))}
-      {renderStockSection('Available Stocks', stocks.filter(s => !s.invested))}
+      {renderStockSection('Available Stocks', stocks)}
     </ScrollView>
   );
 };

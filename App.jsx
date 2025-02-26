@@ -39,7 +39,8 @@ const App = () => {
                 backgroundColor: '#6366f1',
               },
               headerTintColor: '#fff',
-              headerShown: true
+              headerShown: true,
+              animation: 'slide_from_right'
             }}
           />
           <Stack.Screen 
@@ -51,7 +52,8 @@ const App = () => {
                 backgroundColor: '#6366f1',
               },
               headerTintColor: '#fff',
-              headerShown: true
+              headerShown: true,
+              animation: 'slide_from_right'
             }}
           />
         </Stack.Navigator>
