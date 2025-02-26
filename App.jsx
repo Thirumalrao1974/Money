@@ -15,7 +15,14 @@ const App = () => {
   return (
     <SafeAreaProvider>
       <NavigationContainer>
-        <Stack.Navigator>
+        <Stack.Navigator 
+          screenOptions={{
+            headerStyle: {
+              backgroundColor: '#6366f1',
+            },
+            headerTintColor: '#fff',
+          }}
+        >
           <Stack.Screen 
             name="Home" 
             component={HomeScreen}
@@ -24,24 +31,13 @@ const App = () => {
           <Stack.Screen 
             name="Achievements" 
             component={AchievementsScreen}
-            options={{ 
-              title: 'Achievements',
-              headerStyle: {
-                backgroundColor: '#6366f1',
-              },
-              headerTintColor: '#fff',
-            }}
+            options={{ title: 'Achievements' }}
           />
           <Stack.Screen 
             name="StockMarket" 
             component={StockMarketScreen}
             options={({ navigation }) => ({ 
               title: 'Stock Market',
-              headerStyle: {
-                backgroundColor: '#6366f1',
-              },
-              headerTintColor: '#fff',
-              headerShown: true,
               headerLeft: () => (
                 <TouchableOpacity
                   onPress={() => navigation.goBack()}
@@ -61,11 +57,6 @@ const App = () => {
             component={StockDetailsScreen}
             options={({ navigation }) => ({ 
               title: 'Stock Details',
-              headerStyle: {
-                backgroundColor: '#6366f1',
-              },
-              headerTintColor: '#fff',
-              headerShown: true,
               headerLeft: () => (
                 <TouchableOpacity
                   onPress={() => navigation.goBack()}

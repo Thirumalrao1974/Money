@@ -2816,16 +2816,7 @@ const HomeScreen = () => {
                   </TouchableOpacity>
                   <TouchableOpacity 
                     style={styles.iconButton}
-                    onPress={() => {
-                      try {
-                        navigation.navigate('StockMarket', { 
-                          isDarkMode: isDarkMode || false 
-                        });
-                      } catch (error) {
-                        console.error('Navigation error:', error);
-                        Alert.alert('Error', 'Unable to open stock market. Please try again.');
-                      }
-                    }}
+                    onPress={() => navigation.navigate('StockMarket', { isDarkMode })}
                   >
                     <MaterialCommunityIcons 
                       name="chart-line" 
