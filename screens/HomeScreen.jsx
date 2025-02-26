@@ -1165,6 +1165,11 @@ const baseStyles = StyleSheet.create({
     color: '#1f2937',
     marginBottom: 5,
   },
+  iconButton: {
+    padding: 10,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
 });
 
 const HomeScreen = () => {
@@ -1173,6 +1178,7 @@ const HomeScreen = () => {
   const [name, setName] = useState('');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const [streak, setStreak] = useState(0);
   const navigation = useNavigation();
 
   // Update handleNameSubmit
@@ -1181,7 +1187,7 @@ const HomeScreen = () => {
       try {
         await AsyncStorage.setItem('userName', name);
         setName(name);
-        setShowOnboarding(false); // Now this will work
+        setShowOnboarding(false);
         setStreak(0);
         await AsyncStorage.setItem('streak', '0');
       } catch (error) {
@@ -1197,16 +1203,7 @@ const HomeScreen = () => {
         console.error('Navigation is not available');
         return;
       }
-      navigation.navigate('StockMarket', { 
-        isDarkMode,
-        onStockSelect: (stock) => {
-          navigation.navigate('StockDetails', {
-            stock,
-            isDarkMode,
-            API_KEY: 'cuv906pr01qpi6ru1kfgcuv906pr01qpi6ru1kg0'
-          });
-        }
-      });
+      navigation.navigate('StockMarket', { isDarkMode });
     } catch (error) {
       console.error('Navigation error:', error);
       Alert.alert('Error', 'Unable to open stock market. Please try again.');
@@ -1219,17 +1216,20 @@ const HomeScreen = () => {
         colors={isDarkMode ? ['#1f2937', '#111827'] : ['#ffffff', '#f3f4f6']}
         style={styles.gradient}
       >
-        {/* Update the stock market button */}
-        <TouchableOpacity 
-          style={styles.iconButton}
-          onPress={handleStockMarketPress}
-        >
-          <MaterialCommunityIcons 
-            name="chart-line" 
-            size={24} 
-            color={isDarkMode ? '#818cf8' : '#6366f1'} 
-          />
-        </TouchableOpacity>
+        <View style={styles.header}>
+          <View style={styles.headerButtons}>
+            <TouchableOpacity 
+              style={styles.iconButton}
+              onPress={handleStockMarketPress}
+            >
+              <MaterialCommunityIcons 
+                name="chart-line" 
+                size={24} 
+                color={isDarkMode ? '#818cf8' : '#6366f1'} 
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
       </LinearGradient>
     </ScrollView>
   );
