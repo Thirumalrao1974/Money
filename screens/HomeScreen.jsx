@@ -1348,21 +1348,21 @@ const HomeScreen = () => {
     try {
       // Check if achievement already exists
       if (achievements.some(a => a.id === achievement.id)) {
-        return; // Skip if already awarded
+        return;
       }
 
-      // Update local state first
-      setAchievements(prev => [...prev, achievement]);
-      setPoints(prev => prev + achievement.points);
+      // Update local state with new achievement
+      const updatedAchievements = [...achievements, achievement];
+      const updatedPoints = points + achievement.points;
+      
+      setAchievements(updatedAchievements);
+      setPoints(updatedPoints);
       
       // Show achievement animation
       setCurrentAchievement(achievement);
       setShowAchievement(true);
 
       // Save to AsyncStorage
-      const updatedAchievements = [...achievements, achievement];
-      const updatedPoints = points + achievement.points;
-
       await AsyncStorage.multiSet([
         ['achievements', JSON.stringify(updatedAchievements)],
         ['points', String(updatedPoints)]
@@ -1372,8 +1372,6 @@ const HomeScreen = () => {
       setTimeout(() => {
         setShowAchievement(false);
       }, 3000);
-
-      // Play success sound or vibration here if desired
     } catch (error) {
       console.error('Error awarding achievement:', error);
     }
@@ -1656,16 +1654,26 @@ const HomeScreen = () => {
 
       // Check for achievements
       if (updatedTransactions.length === 1) {
-        await awardAchievement(ACHIEVEMENTS.FIRST_TIME[0]);
-        await awardAchievement(ACHIEVEMENTS.STREAKS[0]);
+        await awardAchievement(ACHIEVEMENTS.FIRST_TIME[0]); // First transaction
+        await awardAchievement(ACHIEVEMENTS.STREAKS[0]); // Day 1 streak
       }
 
-      // Check for streak achievements
-      if (newStreak === 3) await awardAchievement(ACHIEVEMENTS.STREAKS[1]);
-      if (newStreak === 7) await awardAchievement(ACHIEVEMENTS.STREAKS[2]);
-      if (newStreak === 30) await awardAchievement(ACHIEVEMENTS.STREAKS[3]);
+      // Check for savings achievements
+      if (transactionType === 'savings') {
+        const totalSavings = updatedTransactions
+          .filter(t => t.type === 'savings')
+          .reduce((sum, t) => sum + parseFloat(t.amount), 0);
 
-      // Reset form
+        if (totalSavings >= 1000 && !achievements.some(a => a.id === 'savings_1000')) {
+          await awardAchievement(ACHIEVEMENTS.SAVINGS[2]);
+        } else if (totalSavings >= 500 && !achievements.some(a => a.id === 'savings_500')) {
+          await awardAchievement(ACHIEVEMENTS.SAVINGS[1]);
+        } else if (totalSavings >= 100 && !achievements.some(a => a.id === 'savings_100')) {
+          await awardAchievement(ACHIEVEMENTS.SAVINGS[0]);
+        }
+      }
+
+      // Reset form and show success
       setTransactionAmount('');
       setSelectedMainCategory('');
       setSelectedSubCategory('');
@@ -2696,6 +2704,75 @@ const HomeScreen = () => {
       </View>
     );
   };
+
+  // Update the handleNameSubmit function
+  const handleNameSubmit = async () => {
+    if (name.trim()) {
+      try {
+        await AsyncStorage.setItem('userName', name);
+        setName(name);
+        // Just set onboarding to false and continue
+        setShowOnboarding(false);
+        setStreak(0); // Start with 0 streak
+        await AsyncStorage.setItem('streak', '0');
+      } catch (error) {
+        console.error('Error saving name:', error);
+      }
+    }
+  };
+
+  // Update the onboarding completion function
+  const completeOnboarding = async () => {
+    try {
+      await AsyncStorage.setItem('onboardingComplete', 'true');
+      setCurrentStep(4);
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+    }
+  };
+
+  // Update the initial data loading useEffect
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        const [
+          savedName,
+          savedTransactions,
+          savedStreak,
+          savedAchievements
+        ] = await AsyncStorage.multiGet([
+          'userName',
+          'transactions',
+          'streak',
+          'achievements'
+        ]);
+
+        if (savedName[1]) {
+          setName(savedName[1]);
+          setShowOnboarding(false);
+        }
+
+        if (savedTransactions[1]) {
+          const parsedTransactions = JSON.parse(savedTransactions[1]);
+          setTransactions(parsedTransactions);
+        }
+
+        if (savedStreak[1]) {
+          setStreak(parseInt(savedStreak[1]));
+        } else {
+          setStreak(0); // Start with 0 streak instead of 1
+        }
+
+        if (savedAchievements[1]) {
+          setAchievements(JSON.parse(savedAchievements[1]));
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
+    };
+
+    loadInitialData();
+  }, []);
 
   return (
     <ScrollView style={styles.container}>
