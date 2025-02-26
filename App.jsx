@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import HomeScreen from "./screens/HomeScreen";
 import StockMarketScreen from './screens/StockMarketScreen';
+import StockDetailsScreen from './screens/StockDetailsScreen';
 import AchievementsScreen from './screens/AchievementsScreen';
 
 const Stack = createNativeStackNavigator();
@@ -39,6 +40,11 @@ const App = () => {
               },
               headerTintColor: '#fff',
             }}
+          />
+          <Stack.Screen 
+            name="StockDetails" 
+            component={StockDetailsScreen}
+            options={{ title: 'Stock Details' }}
           />
         </Stack.Navigator>
       </NavigationContainer>

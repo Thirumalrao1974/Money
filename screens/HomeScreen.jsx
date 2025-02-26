@@ -2200,9 +2200,26 @@ const HomeScreen = () => {
           {result && (
             <Animatable.View 
               animation="fadeIn" 
-              style={styles.resultContainer}
+              style={[
+                styles.resultContainer,
+                {
+                  backgroundColor: isDarkMode ? '#374151' : '#f3f4f6',
+                  borderWidth: 2,
+                  borderColor: isDarkMode ? '#818cf8' : '#6366f1',
+                  padding: 20,
+                  borderRadius: 15,
+                  marginTop: 20
+                }
+              ]}
             >
-              <Text style={[styles.resultText, isDarkMode && styles.darkText]}>
+              <Text style={[
+                styles.resultText,
+                {
+                  fontSize: 24,
+                  fontWeight: 'bold',
+                  color: isDarkMode ? '#10b981' : '#047857'
+                }
+              ]}>
                 {result.from} = {result.to}
               </Text>
             </Animatable.View>
@@ -2352,6 +2369,29 @@ const HomeScreen = () => {
     loadAchievements();
   }, []);
 
+  // Add this useEffect to persist dark mode setting
+  useEffect(() => {
+    const loadDarkMode = async () => {
+      try {
+        const savedMode = await AsyncStorage.getItem('darkMode');
+        setIsDarkMode(savedMode === 'true');
+      } catch (error) {
+        console.error('Error loading dark mode setting:', error);
+      }
+    };
+    loadDarkMode();
+  }, []);
+
+  const toggleDarkMode = async () => {
+    try {
+      const newMode = !isDarkMode;
+      setIsDarkMode(newMode);
+      await AsyncStorage.setItem('darkMode', String(newMode));
+    } catch (error) {
+      console.error('Error saving dark mode setting:', error);
+    }
+  };
+
   return (
     <ScrollView style={styles.container}>
       <LinearGradient
@@ -2393,7 +2433,7 @@ const HomeScreen = () => {
                   </TouchableOpacity>
                   <TouchableOpacity 
                     style={styles.iconButton}
-                    onPress={() => setShowStockMarket(true)}
+                    onPress={() => navigation.navigate('StockMarket', { isDarkMode })}
                   >
                     <MaterialCommunityIcons 
                       name="chart-line" 
@@ -2402,8 +2442,10 @@ const HomeScreen = () => {
                     />
                   </TouchableOpacity>
                   <Switch 
-                    value={isDarkMode} 
-                    onValueChange={setIsDarkMode}
+                    value={isDarkMode}
+                    onValueChange={toggleDarkMode}
+                    trackColor={{ false: '#767577', true: '#818cf8' }}
+                    thumbColor={isDarkMode ? '#6366f1' : '#f4f3f4'}
                   />
                 </View>
               </View>
