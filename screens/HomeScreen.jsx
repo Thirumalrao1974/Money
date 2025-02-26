@@ -2521,16 +2521,23 @@ const HomeScreen = () => {
                   </TouchableOpacity>
                   <TouchableOpacity 
                     style={styles.iconButton}
-                    onPress={() => navigation.navigate('StockMarket', { 
-                      isDarkMode,
-                      onStockSelect: (stock) => {
-                        navigation.navigate('StockDetails', {
-                          stock,
+                    onPress={() => {
+                      try {
+                        navigation.navigate('StockMarket', { 
                           isDarkMode,
-                          API_KEY: 'cuv906pr01qpi6ru1kfgcuv906pr01qpi6ru1kg0'
+                          onStockSelect: (stock) => {
+                            navigation.navigate('StockDetails', {
+                              stock,
+                              isDarkMode,
+                              API_KEY: 'cuv906pr01qpi6ru1kfgcuv906pr01qpi6ru1kg0'
+                            });
+                          }
                         });
+                      } catch (error) {
+                        console.error('Navigation error:', error);
+                        Alert.alert('Error', 'Unable to open stock market. Please try again.');
                       }
-                    })}
+                    }}
                   >
                     <MaterialCommunityIcons 
                       name="chart-line" 

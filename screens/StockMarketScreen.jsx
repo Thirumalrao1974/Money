@@ -16,6 +16,8 @@ const StockMarketScreen = ({ route, navigation }) => {
   const { isDarkMode, onStockSelect } = route.params;
   const [stocks, setStocks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
   const API_KEY = 'cuv906pr01qpi6ru1kfgcuv906pr01qpi6ru1kg0';
 
   // List of stock symbols to fetch
@@ -27,11 +29,24 @@ const StockMarketScreen = ({ route, navigation }) => {
 
   const fetchStockData = async () => {
     try {
+      setError(null);
+      setLoading(true);
+      
       const promises = STOCK_SYMBOLS.map(async (symbol) => {
         const response = await fetch(
           `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${API_KEY}`
         );
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
+        
+        if (data.error) {
+          throw new Error(data.error);
+        }
+
         return {
           symbol,
           name: getStockName(symbol), // Helper function to get stock names
@@ -46,16 +61,47 @@ const StockMarketScreen = ({ route, navigation }) => {
       const stockData = await Promise.all(promises);
       setStocks(stockData);
       setLoading(false);
+      setRetryCount(0);
     } catch (error) {
       console.error('Error fetching stock data:', error);
-      Alert.alert(
-        'Error',
-        'Failed to fetch stock data. Please try again later.',
-        [{ text: 'OK' }]
-      );
+      setError(error.message);
       setLoading(false);
+      
+      // Implement retry logic
+      if (retryCount < 3) {
+        setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+          fetchStockData();
+        }, 2000);
+      } else {
+        Alert.alert(
+          'Error',
+          'Failed to fetch stock data. Please check your internet connection and try again.',
+          [
+            { 
+              text: 'Retry', 
+              onPress: () => {
+                setRetryCount(0);
+                fetchStockData();
+              }
+            },
+            { text: 'Cancel' }
+          ]
+        );
+      }
     }
   };
+
+  // Add auto-refresh every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!loading && !error) {
+        fetchStockData();
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [loading, error]);
 
   const getStockName = (symbol) => {
     const names = {
@@ -128,8 +174,32 @@ const StockMarketScreen = ({ route, navigation }) => {
       <View style={[styles.loadingContainer, isDarkMode && styles.darkMode]}>
         <ActivityIndicator size="large" color={isDarkMode ? '#818cf8' : '#6366f1'} />
         <Text style={[styles.loadingText, isDarkMode && styles.darkModeText]}>
-          Loading stock data...
+          {retryCount > 0 ? `Retrying... (${retryCount}/3)` : 'Loading stock data...'}
         </Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.errorContainer, isDarkMode && styles.darkMode]}>
+        <MaterialCommunityIcons 
+          name="alert-circle-outline" 
+          size={48} 
+          color={isDarkMode ? '#ef4444' : '#dc2626'} 
+        />
+        <Text style={[styles.errorText, isDarkMode && styles.darkModeText]}>
+          Unable to load stock data
+        </Text>
+        <TouchableOpacity 
+          style={styles.retryButton}
+          onPress={() => {
+            setRetryCount(0);
+            fetchStockData();
+          }}
+        >
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -226,7 +296,32 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
     color: '#1f2937',
-  }
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#f3f4f6',
+  },
+  errorText: {
+    fontSize: 18,
+    color: '#1f2937',
+    marginTop: 10,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#6366f1',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
 });
 
 export default StockMarketScreen; 
