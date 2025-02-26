@@ -12,17 +12,18 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 const Stack = createNativeStackNavigator();
 
 const App = () => {
+  const screenOptions = {
+    headerStyle: {
+      backgroundColor: '#6366f1',
+    },
+    headerTintColor: '#fff',
+    headerShown: true
+  };
+
   return (
     <SafeAreaProvider>
       <NavigationContainer>
-        <Stack.Navigator 
-          screenOptions={{
-            headerStyle: {
-              backgroundColor: '#6366f1',
-            },
-            headerTintColor: '#fff',
-          }}
-        >
+        <Stack.Navigator screenOptions={screenOptions}>
           <Stack.Screen 
             name="Home" 
             component={HomeScreen}
